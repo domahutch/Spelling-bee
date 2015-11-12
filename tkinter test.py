@@ -231,13 +231,48 @@ def test(wordsForTest, IDsandDefinitons, wordIDsforTest):
     print('FUNCTION: test COMPLETE')
     print(time.asctime( time.localtime(time.time()) ))
 
+def spellCheck(word, correct):
+    lengthWord = len(word)
+    lengthCorrect = len(correct)
+    difference = lengthWord - lengthCorrect
+    if difference == 0:
+        length = lengthWord
+    elif difference > 0:
+        length = lengthAnswer
+        difference = lengthWord - lengthCorrect
+    else:
+        length = lengthWord
+        difference = lengthCorrect - lengthWord
+    incorrect = difference
+    for k in range(0, length):
+        if word[k] == correct[k]:
+            pass
+        else:
+            incorrect = incorrect + 1
+    if incorrect > 1:
+        returning = 'WRONG'
+    elif incorrect == 1:
+        returning = 'ALMOST'
+    else:
+        returning = 'CORRECT'
+    return returning
+    print('FUNCTION spellCheck COMPLETE')
+    print(time.asctime( time.localtime(time.time()) ))
+
 def answer(word, IDsandDefinitons):
     global score, question
     answer = answerEntry.get()
-    if answer == word:
+    state = spellCheck(answer, word)
+    if state == 'CORRECT':
         feedbackLabel.config(text = 'That is correct')
         score = score + 2
         print('Score: '+str(score))
+        text = 'Score: '+str(score)
+        scoreLabel.config(text = text)
+    elif state == 'ALMOST':
+        feedbackLabel.config(text = 'That is almost correct, the correct answer was '+word)
+        score = score + 1
+        print('Score: '+ str(score))
         text = 'Score: '+str(score)
         scoreLabel.config(text = text)
     else:
