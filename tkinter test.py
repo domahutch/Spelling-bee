@@ -5,6 +5,8 @@ from parse_rest.datatypes import Object
 from random import randint
 import time
 
+##A fun comment
+
 register('pTTzpgrZvewsfdyceO8uGvTLoS4oD3TU0aeoY6En', 'wezDsrAFbbuu7nHbwvFUXDNeJdzLLGdBZJS4dK74', master_key=None)
 
 print('Beginning')
