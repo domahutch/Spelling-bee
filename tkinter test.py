@@ -55,37 +55,44 @@ def getWordDetails():
         definition = myClass.Query.get(objectId = wordIDs[k])
         definition = definition.definition
         IDsandDefinitions[wordIDs[k]] = definition
-    print('wordIDs and Definitions ASSIGNED')
-    print(time.asctime( time.localtime(time.time()) ))
     definition = myClass.Query.get(objectId = wordIDs[length-1])
     definition = definition.definition
+    print('wordIDs and Definitions ASSIGNED')
+    print(time.asctime( time.localtime(time.time()) ))
     IDsandDefinitions[wordIDs[length-1]] = definition[:-2]
     print('FUNCTION: getWordDetails COMPLETE')
     print(time.asctime( time.localtime(time.time()) ))
     return wordIDs, words, nameIDs, IDsandTest, IDsandDefinitions
 
 def userLogin():
-    global username
+    global username, userDetails
     username = usernameEntry.get()
     password = passwordEntry.get()
-    print(username, password)
     myClassName = 'User'
     myClass = Object.factory(myClassName)
-    userDetails = str(myClass.Query.all())
-    username = username.lower()
+    username = str(username.lower())
+    Id = userDetails[username]
+    print(Id)
+    data = myClass.Query.get(objectId = Id)
+    teacher = data.teacher
+    print(teacher)
     if username in userDetails:
         try:
             print('Logging in')
             User.login(username, password)
             print('Logged in')
             currentUserLabel.config(text = 'Logged in as '+username)
-            quizSelectButton.config(state = NORMAL)
-            outputUserResults()
+            if teacher == False:
+                outputUserResults()
+                newWordButton.config(state = DISABLED)
+                quizSelectButton.config(state = NORMAL)
+            else:
+                newWordButton.config(state = NORMAL)
+                quizSelectButton.config(state = DISABLED)
+                resultsList.delete(0, END)
         except:
             errorLabel.config(text = 'That is an invalid password')
             print('That is an invalid password')
-##If teacher or not
-        outputUserResults()
     else:
         errorLabel.config(text = 'That is an invalid username')
         print('That is an invalid username')
@@ -100,24 +107,28 @@ def signUp(names):
     if username in str(names):
         errorLabel.config(text = 'That username is already taken')
         print('That username is already taken')
-##Add teacher option
     else:
         teacher = teacherVar.get()
         if teacher == 0:
             u = User.signup(username, password, teacher = False)
             currentUserLabel.config(text = 'Logged in as '+username)
             addUsertoResults()
+            outputUserResults()
+            newWordButton.config(state = DISABLED)
             quizSelectButton.config(state = NORMAL)
             print('Account created')
         else:
             u = User.signup(username, password, teacher = True)
             currentUserLabel.config(text = 'Logged in as '+username)
             newWordButton.config(state = NORMAL)
+            quizSelectButton.config(state = DISABLED)
+            resultsList.delete(0, END)
             print('Account created')
     print('FUNCTION: signUp COMPLETE')
     print(time.asctime( time.localtime(time.time()) ))
 
 def userIDsAndNames():
+    global userDetails
     names = []
     userIDs = []
     userDetails = {}
@@ -142,6 +153,7 @@ def userIDsAndNames():
     for k in range(0,length):
         userDetails[names[k]] = userIDs[k]
     print('FUNCTION: userIDsAndNames COMPLETE')
+    print(userDetails)
     print(time.asctime( time.localtime(time.time()) ))
     return userDetails, names, userIDs
 
@@ -171,10 +183,9 @@ def findTest():
         testNameIDs[testNames[k]] = testIDs[k]
     for k in range (0, length):
         testIDsNames[testIDs[k]] = testNames[k]
-    print(testIDsNames)
     print('FUNCTION: findTest COMPLETE')
     print(time.asctime( time.localtime(time.time()) ))
-    return testIDs, testNames
+    return testIDs, testNames, testNameIDs
 
 def chooseQuiz(testIDs, testNames):
     global testID, testName
@@ -358,6 +369,7 @@ def outputUserResults():
         if user == username:
             testID = obj.testID
             average = obj.average
+            average = '%.1f' % average
             attempts = obj.attempts
             testName = testIDsNames[testID]
             string = (str(testName)+': Average = '+str(average)+'; Attempts = '+str(attempts))
@@ -370,7 +382,24 @@ def outputUserResults():
     print('FUNCTION outputUserResults COMPLETE')
     print(time.asctime( time.localtime(time.time()) ))
 
-
+def addWord(words, testNames, testNameIDs):
+    word = newWordEntry.get()
+    definition = newWordDefinitionEntry.get()
+    quiz = newWordQuizEntry.get()
+    if quiz not in testNames:
+        errorLabel.config(text = 'That quiz does not exist')
+    else:
+        quizID = testNameIDs[quiz]
+        if word in words:
+            errorLabel.config(text = 'That word is already in the list')
+        else:
+            newobject = Words(text = word, definition = definition, testID = quizID)
+            newobject.save()
+            errorLabel.config(text = 'Word has been added to database')
+            print('Word Added')
+    print('FUNCTION addWord COMPLETE')
+        
+                          
 def funButton():
     global teacherVar
     print(teacherVar.get())
@@ -378,7 +407,7 @@ def funButton():
     print(time.asctime( time.localtime(time.time()) ))
 
 wordIDs, words, nameIDs, IDsandTest, IDsandDefinitions = getWordDetails()
-testIDs, testNames = findTest()
+testIDs, testNames, testNameIDs = findTest()
 userDetails, names, userIDs = userIDsAndNames()
 getResultIDs()
 
@@ -392,7 +421,6 @@ class Words(Object):
     pass
 
 base = Tk()
-base.geometry('600x600+0+0')
 base.title('Spelling bee')
 
 print('Base DECLARED')
@@ -435,6 +463,7 @@ submitButton = Button(text = 'Submit',state = DISABLED, command = lambda: answer
 scoreLabel = Label(text = 'Score: 0')
 feedbackLabel = Label()
 resultsList = Listbox(selectmode = SINGLE, width = 40)
+resultTitleLabel = Label(text = 'Results')
 
 print('Quiz modules DECLARED')
 
@@ -451,6 +480,7 @@ answerEntry.grid(row = 8, column = 3)
 submitButton.grid(row = 9, column = 3)
 scoreLabel.grid(row = 8, column = 4)
 resultsList.grid(row = 1, column = 4)
+restultTitleLabel.grid(row = 0, column = 4)
 
 print('Quiz modules POSITIONED')
 
@@ -461,7 +491,7 @@ newWordLabel1 = Label(text = 'Add a new word:')
 newWordLabel2 = Label(text = 'Word:')
 newWordLabel3 = Label(text = 'Definition:')
 newWordLabel4 = Label(text = 'Quiz:')
-newWordButton = Button(text = 'Add Word', command = addWord(), state = DISABLED)
+newWordButton = Button(text = 'Add Word',state = DISABLED, command = lambda: addWord(words, testNames, testNameIDs))
 
 print('Teacher modules DECLARED')
 
