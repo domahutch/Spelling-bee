@@ -64,7 +64,7 @@ def getWordDetails():
     print(time.asctime( time.localtime(time.time()) ))
     return wordIDs, words, nameIDs, IDsandTest, IDsandDefinitions
 
-def userLogin():
+def userLogin(userIDClass):
     global username, userDetails
     username = usernameEntry.get()
     password = passwordEntry.get()
@@ -77,11 +77,11 @@ def userLogin():
     teacher = data.teacher
     print(teacher)
     if username in userDetails:
+        print('Logging in')
         try:
-            print('Logging in')
             User.login(username, password)
             print('Logged in')
-            currentUserLabel.config(text = 'Logged in as '+username)
+            currentUserLabel.config(text = 'Logged in as '+username+'. Class: '+userIDClass[Id])
             if teacher == False:
                 outputUserResults()
                 newWordButton.config(state = DISABLED)
@@ -90,27 +90,32 @@ def userLogin():
                 newWordButton.config(state = NORMAL)
                 quizSelectButton.config(state = DISABLED)
                 resultsList.delete(0, END)
+                findTeachersPupils(Id)
         except:
-            errorLabel.config(text = 'That is an invalid password')
-            print('That is an invalid password')
+            print('Incorrect password')
+            currentUserLabel.config(text = 'Incorrect password')
     else:
         errorLabel.config(text = 'That is an invalid username')
         print('That is an invalid username')
     print('FUNCTION: userLogin COMPLETE')
     print(time.asctime( time.localtime(time.time()) ))
     
-def signUp(names):
+def signUp(names, classNames):
     global username
     username = usernameEntry.get()
     password = passwordEntry.get()
     username = username.lower()
+    value = classBox.curselection()
+    strip = str(value).strip(',')
+    value = int(strip[1])
+    group = classNames[value]
     if username in str(names):
         errorLabel.config(text = 'That username is already taken')
         print('That username is already taken')
     else:
         teacher = teacherVar.get()
         if teacher == 0:
-            u = User.signup(username, password, teacher = False)
+            u = User.signup(username, password, teacher = False, group = group)
             currentUserLabel.config(text = 'Logged in as '+username)
             addUsertoResults()
             outputUserResults()
@@ -118,7 +123,7 @@ def signUp(names):
             quizSelectButton.config(state = NORMAL)
             print('Account created')
         else:
-            u = User.signup(username, password, teacher = True)
+            u = User.signup(username, password, teacher = True, group = group)
             currentUserLabel.config(text = 'Logged in as '+username)
             newWordButton.config(state = NORMAL)
             quizSelectButton.config(state = DISABLED)
@@ -128,10 +133,11 @@ def signUp(names):
     print(time.asctime( time.localtime(time.time()) ))
 
 def userIDsAndNames():
-    global userDetails
+    global userIDtoName, userIDs, userDetails
     names = []
     userIDs = []
     userDetails = {}
+    userIDtoName = {}
     myClassName = 'User'
     myClass = Object.factory(myClassName)
     details = myClass.Query.all()
@@ -152,8 +158,8 @@ def userIDsAndNames():
     length = len(userIDs)
     for k in range(0,length):
         userDetails[names[k]] = userIDs[k]
+        userIDtoName[userIDs[k]] = names[k]
     print('FUNCTION: userIDsAndNames COMPLETE')
-    print(userDetails)
     print(time.asctime( time.localtime(time.time()) ))
     return userDetails, names, userIDs
 
@@ -291,7 +297,7 @@ def answer(word, IDsandDefinitons):
     if question <10:
         test(wordsForTest, IDsandDefinitons, wordIDsforTest)
     else:
-        feedbackLabel.config(text = 'Test complete. You scored '+word)
+        feedbackLabel.config(text = 'Test complete. You scored '+score)
         print('Test Finished')
         submitButton.config(state = DISABLED)
         saveHistory()
@@ -379,6 +385,8 @@ def outputUserResults():
     length = len(results)
     for k in range(0, length):
         resultsList.insert(k+1, results[k])
+    length = len(results)
+    resultsList.config(height = length)
     print('FUNCTION outputUserResults COMPLETE')
     print(time.asctime( time.localtime(time.time()) ))
 
@@ -398,8 +406,121 @@ def addWord(words, testNames, testNameIDs):
             errorLabel.config(text = 'Word has been added to database')
             print('Word Added')
     print('FUNCTION addWord COMPLETE')
-        
-                          
+
+def classDetails(userIDs):
+    global userIDClass
+    classNames = []
+    userIDClass = {}
+    ClassUserId = {}
+    length = len(userIDs)
+    myClassName = 'User'
+    myClass = Object.factory(myClassName)
+    for k in range(0, length):
+        Id = userIDs[k]
+        data = myClass.Query.get(objectId = Id)
+        group = data.group
+        userIDClass[Id] = group
+        if group in classNames:
+            pass
+        else:
+            classNames.append(group)
+    return classNames, userIDClass
+
+def findTeachersPupils(Id):
+    global userIDtoName, userIDs, sameGroupID
+    sameGroupID = []
+    group = userIDClass[Id]
+    length = len(userIDClass)
+    teacherGroup = userIDClass[Id]
+    for k in range (0, length):
+        userID = userIDs[k]
+        if userID == Id:
+            pass
+        else:
+            pupilGroup = userIDClass[userID]
+            if pupilGroup == teacherGroup:
+                sameGroupID.append(userID)
+    classPupilsList.delete(0, END)
+    length = len(sameGroupID)
+    for k in range(0, length):
+        classPupilsList.insert(k+1, userIDtoName[sameGroupID[k]])
+
+def pupilResultsToTeacher(sameGroupID):
+    global resultIDs, testIDsNames, userDetails, userIDtoName, results, pupilUserName
+    results = []
+    value = str(classPupilsList.curselection())
+    strip = value.strip(',')
+    value = int(strip[1])
+    pupilID = sameGroupID[value]
+    pupilName = userIDtoName[pupilID]
+    pupilUserName = pupilName
+    myClassName = 'Results'
+    myClass = Object.factory(myClassName)
+    length = len(resultIDs)
+    for k in range(1, length):
+        obj = myClass.Query.get(objectId = resultIDs[k])
+        user = obj.userName
+        if user == pupilName:
+            testID = obj.testID
+            average = obj.average
+            average = '%.1f' % average
+            attempts = obj.attempts
+            testName = testIDsNames[testID]
+            string = (str(testName)+': Average = '+str(average)+'; Attempts = '+str(attempts))
+            results.append(string)
+    print('Results collected')
+    print(results)
+    pupilResultsList.delete(0, END)
+    length = len(results)
+    for k in range(0, length):
+        pupilResultsList.insert(k+1, results[k])
+
+def historyToTeacher():
+    global results, testNameIDs, pupilUserName
+
+    user = pupilUserName
+    historyIDs = []
+    outputList = []
+
+    value = str(pupilResultsList.curselection())
+    strip = value.strip(',')
+    value = int(strip[1])
+    line = results[value]
+    strip = line.split(': Average')
+    testname = strip[0]
+    testID = testNameIDs[testname]
+
+    myClassName = 'History'
+    myClass = Object.factory(myClassName)
+    output = myClass.Query.all()
+    print(output)
+    length = len(output)
+    print(length)
+
+    for k in range(0, length):
+        strip = str(output[k]).strip('<>')
+        split = strip.split(':')
+        historyIDs.append(split[1])
+        print(split[1])
+
+    for k in range(0, length):
+        result = myClass.Query.get(objectId = historyIDs[k])
+        historyUsername = result.userName
+        historyTestID = result.testID
+        if historyUsername == pupilUserName and historyTestID == testID:
+            date = result.createdAt
+            date = str(date)[:10]
+            score = result.score
+            string = (str(date)+': scored '+str(score))
+            outputList.append(string)
+        else:
+            pass
+
+    historyList.delete(0, END)
+    length = len(outputList)
+    for k in range(0, length):
+        historyList.insert(k+1, outputList[k])
+
 def funButton():
     global teacherVar
     print(teacherVar.get())
@@ -409,6 +530,7 @@ def funButton():
 wordIDs, words, nameIDs, IDsandTest, IDsandDefinitions = getWordDetails()
 testIDs, testNames, testNameIDs = findTest()
 userDetails, names, userIDs = userIDsAndNames()
+classNames, userIDClass= classDetails(userIDs)
 getResultIDs()
 
 class Results(Object):
@@ -428,9 +550,11 @@ print('Base DECLARED')
 global teacherVar
 teacherVar = IntVar()
 
+classLength = len(classNames)
+
 titleLabel = Label(text='Welcome to the Speeling Bee')
-buttonLogin = Button(text='Login', fg = 'blue', command = userLogin)
-buttonSignUp = Button(text='Sign up', command = lambda: signUp(names))
+buttonLogin = Button(text='Login', fg = 'blue', command = lambda: userLogin(userIDClass))
+buttonSignUp = Button(text='Sign up', command = lambda: signUp(names, classNames))
 usernameLabel = Label(text = 'Username:')
 passwordLabel = Label(text = 'Password:')
 usernameEntry = Entry()
@@ -438,6 +562,11 @@ passwordEntry = Entry(show = '*')
 errorLabel = Label()
 teacherCheckBox = Checkbutton(text = 'Teacher', variable = teacherVar, onvalue = 1, offvalue = 0)
 currentUserLabel = Label()
+classBox = Listbox(selectmode = SINGLE, height = classLength)
+
+length = len(classNames)
+for k in range(0, length):
+    classBox.insert(k+1, classNames[k])
 
 print('Membership modules DECLARED')
 
@@ -451,6 +580,7 @@ buttonSignUp.grid(row = 2, column = 2)
 errorLabel.grid(row = 4, column = 0)
 teacherCheckBox.grid(row = 3, column = 0)
 currentUserLabel.grid(row = 0, column = 1)
+classBox.grid(row = 1, column = 3)
 
 print('Membership modules POSITIONED')
 
@@ -480,7 +610,7 @@ answerEntry.grid(row = 8, column = 3)
 submitButton.grid(row = 9, column = 3)
 scoreLabel.grid(row = 8, column = 4)
 resultsList.grid(row = 1, column = 4)
-restultTitleLabel.grid(row = 0, column = 4)
+resultTitleLabel.grid(row = 0, column = 4)
 
 print('Quiz modules POSITIONED')
 
@@ -492,6 +622,11 @@ newWordLabel2 = Label(text = 'Word:')
 newWordLabel3 = Label(text = 'Definition:')
 newWordLabel4 = Label(text = 'Quiz:')
 newWordButton = Button(text = 'Add Word',state = DISABLED, command = lambda: addWord(words, testNames, testNameIDs))
+classPupilsList = Listbox(selectmode = SINGLE)
+pupilSelectButton = Button(text = 'Choose a pupil.', command = lambda: pupilResultsToTeacher(sameGroupID))
+pupilResultsList = Listbox(selectmode = SINGLE)
+resultSelectButton = Button(text = 'Choose a result.', command = lambda: historyToTeacher())
+historyList = Listbox(selectmode = SINGLE)
 
 print('Teacher modules DECLARED')
 
@@ -503,6 +638,12 @@ newWordLabel2.grid(row = 3, column = 4)
 newWordLabel3.grid(row = 4, column = 4)
 newWordLabel4.grid(row = 5, column = 4)
 newWordButton.grid(row = 6, column = 5)
+classPupilsList.grid(row = 5, column = 6)
+pupilSelectButton.grid(row = 5, column = 7)
+pupilResultsList.grid(row = 6, column = 6)
+resultSelectButton.grid(row = 6, column = 7)
+historyList.grid(row = 7, column =6)
+
 
 print('Teacher modules POSITIONED')
 
