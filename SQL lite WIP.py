@@ -4,6 +4,10 @@ from parse_rest.user import User
 from parse_rest.datatypes import Object
 from random import randint
 import time
+import sqlite3
+
+conn = sqlite3.connect('test.db')
+c = conn.cursor()
 
 
 ##A fun comment
@@ -17,55 +21,25 @@ def getWordDetails():
     global IDsandDefinitions
     wordIDs = []
     words = []
-    nameIDs = {}
+    testIDs = []
+    definitions = []
+    wordAndIDs = {}
     IDsandTest = {}
     IDsandDefinitions = {}
-    myClassName = 'Words'
-    myClass = Object.factory(myClassName)
-    word = myClass.Query.all()
-    splitword = str(word).split(':')
-    length = len(splitword)
-    for k in range (1,length-1):
-        line = splitword[k]
-        splitword[k] = line[:-9]
-        wordIDs.append(splitword[k])
-    print('wordIDs FOUND')
-    print(time.asctime( time.localtime(time.time()) ))
-    wordIDs.append(splitword[length-1][:-2])
-    length = len(wordIDs)
-    for k in range(0, length):
-        word = myClass.Query.get(objectId = wordIDs[k])
-        words.append(word.text)
-    print('words FOUND')
-    print(time.asctime( time.localtime(time.time()) ))
-    for k in range(0, length - 1):
-        nameIDs[wordIDs[k]] = words[k]
-    print('words and wordIDs ASSIGNED')
-    print(time.asctime( time.localtime(time.time()) ))
-    nameIDs[wordIDs[length-1]] = words[length-1]
-    for k in range(0, length - 1):
-        testID = myClass.Query.get(objectId = wordIDs[k])
-        testID = testID.testID
-        IDsandTest[wordIDs[k]] = testID
-    print('testID and wordIDs ASSIGNED')
-    print(time.asctime( time.localtime(time.time()) ))
-    testID = myClass.Query.get(objectId = wordIDs[length-1])
-    testID = testID.testID
-    IDsandTest[wordIDs[length-1]] = testID[:-2]
-    for k in range(0, length - 1):
-        definition = myClass.Query.get(objectId = wordIDs[k])
-        definition = definition.definition
-        IDsandDefinitions[wordIDs[k]] = definition
-    definition = myClass.Query.get(objectId = wordIDs[length-1])
-    definition = definition.definition
-    print('wordIDs and Definitions ASSIGNED')
-    print(time.asctime( time.localtime(time.time()) ))
-    IDsandDefinitions[wordIDs[length-1]] = definition[:-2]
-    print('FUNCTION: getWordDetails COMPLETE')
-    print(time.asctime( time.localtime(time.time()) ))
-    return wordIDs, words, nameIDs, IDsandTest, IDsandDefinitions
+    sql = 'SELECT * FROM words'
+    for k in c.execute(sql):
+        wordIDs.append(k[0])
+        words.append(k[1])
+        definitions.append(k[2])
+        testIDs.append(k[3])
+    length = len(words)
+    for k in range (0, length):
+        wordAndIDs[wordIDs[k]] = words[k]
+        IDsandTest[wordIDs[k]] = testIDs[k]
+        IDsandDefinitions[wordIDs[k]] = definitions[k]
+    return(wordIDs, words, testIDs, definitions, wordAndIDs, IDsandTest, IDsandDefinitions)
 
-def Login(userIDClass):
+def userLogin(userIDClass):
     global username, userDetails
     username = usernameEntry.get()
     password = passwordEntry.get()
@@ -116,22 +90,22 @@ def signUp(names, classNames):
     else:
         teacher = teacherVar.get()
         if teacher == 0:
-            u = User.signup(username, password, teacher = False, group = group)
+            c.execute('INSERT INTO users(username, password, class, teacher) VALUES (?,?,?,?)',(username, password, group, False))
             currentUserLabel.config(text = 'Logged in as '+username)
-            addUsertoResults()
-            outputUserResults()
+##            addUsertoResults()
+##            outputUserResults()
             newWordButton.config(state = DISABLED)
             quizSelectButton.config(state = NORMAL)
             print('Account Created')
+            conn.commit()
         else:
-            u = User.signup(username, password, teacher = True, group = group)
+            c.execute('INSERT INTO users(username, password, class, teacher) VALUES (?,?,?,?)',(username, password, group, True))
             currentUserLabel.config(text = 'Logged in as '+username)
             newWordButton.config(state = NORMAL)
             quizSelectButton.config(state = DISABLED)
             resultsList.delete(0, END)
             print('Account Created')
-    print('FUNCTION: signUp COMPLETE')
-    print(time.asctime( time.localtime(time.time()) ))
+            conn.commit()
 
 def userIDsAndNames():
     global userIDtoName, userIDs, userDetails
@@ -139,60 +113,30 @@ def userIDsAndNames():
     userIDs = []
     userDetails = {}
     userIDtoName = {}
-    myClassName = 'User'
-    myClass = Object.factory(myClassName)
-    details = myClass.Query.all()
-    splitword = str(details).split(':')
-    length = len(splitword)
-    for k in range (1,length-1):
-        line = splitword[k]
-        names.append(line[:-24])
-    lastLine = str(splitword[length-1])[:-18]
-    names.append(lastLine)
-    splitword = str(details).split('Id ')
-    length = len(splitword)
-    for k in range (1,length-1):
-        line = splitword[k].split(')>,')
-        userIDs.append(line[0])
-    lastLine = str(splitword[length-1])[:-3]
-    userIDs.append(lastLine)
-    length = len(userIDs)
-    for k in range(0,length):
+    sql = 'SELECT * FROM users'
+    for k in c.execute(sql):
+        names.append(k[1])
+        userIDs.append(k[0])
+    length = len(names)
+    for k in range(0, length):
         userDetails[names[k]] = userIDs[k]
         userIDtoName[userIDs[k]] = names[k]
-    print('FUNCTION: userIDsAndNames COMPLETE')
-    print(time.asctime( time.localtime(time.time()) ))
-    return userDetails, names, userIDs
+    return(names, userIDs, userDetails, userIDtoName)
 
 def findTest():
-    global testIDs, testIDsNames
-    testNames = []
+    testNames =[]
     testIDs = []
     testNameIDs = {}
     testIDsNames = {}
-    myClassName = 'Tests'
-    myClass = Object.factory(myClassName)
-    word= myClass.Query.all()
-    splitword = str(word).split(':')
-    length = len(splitword)
-    for k in range (1,length-1):
-        line = splitword[k]
-        splitword[k] = line[:-9]
-        testIDs.append(splitword[k])
-    testIDs.append(splitword[length-1][:-2])
-    length = len(testIDs)
-    for k in range (0, length - 1):
-        name = myClass.Query.get(objectId = testIDs[k])
-        testNames.append(name.name)
-    name = myClass.Query.get(objectId = testIDs[length-1])
-    testNames.append(name.name)
-    for k in range (0, length):
+    sql = 'SELECT * FROM tests'
+    for k in c.execute(sql):
+        testNames.append(k[1])
+        testIDs.append(k[0])
+    length = len(testNames)
+    for k in range(0, length):
         testNameIDs[testNames[k]] = testIDs[k]
-    for k in range (0, length):
         testIDsNames[testIDs[k]] = testNames[k]
-    print('FUNCTION: findTest COMPLETE')
-    print(time.asctime( time.localtime(time.time()) ))
-    return testIDs, testNames, testNameIDs
+    return(testNames, testIDs, testNameIDs, testIDsNames)
 
 def chooseQuiz(testIDs, testNames):
     global testID, testName
@@ -411,20 +355,21 @@ def addWord(words, testNames, testNameIDs):
 def classDetails(userIDs):
     global userIDClass
     classNames = []
+    group = []
     userIDClass = {}
-    ClassUseriD = {}
+    ClassUserID = {}
     length = len(userIDs)
-    myClassName = 'User'
-    myClass = Object.factory(myClassName)
+    sql = 'SELECT * FROM users'
+    for k in c.execute(sql):
+        group.append(k[3])
+    print(group)
     for k in range(0, length):
         Id = userIDs[k]
-        data = myClass.Query.get(objectId = Id)
-        group = data.group
-        userIDClass[Id] = group
-        if group in classNames:
+        userIDClass[Id] = group[k]
+        if group[k] in classNames:
             pass
         else:
-            classNames.append(group)
+            classNames.append(group[k])
     return classNames, userIDClass
 
 def findTeachersPupils(Id):
@@ -528,9 +473,9 @@ def funButton():
     print('FUNCTION: funButton COMPLETE')
     print(time.asctime( time.localtime(time.time()) ))
 
-wordIDs, words, nameIDs, IDsandTest, IDsandDefinitions = getWordDetails()
-testIDs, testNames, testNameIDs = findTest()
-userDetails, names, userIDs = userIDsAndNames()
+wordIDs, words, testIDs, definitions, wordAndIDs, IDsandTest, IDsandDefinitions = getWordDetails()
+testNames, testIDs, testNameIDs, testIDsNames = findTest()
+names, userIDs, userDetails, userIDtoName = userIDsAndNames()
 classNames, userIDClass= classDetails(userIDs)
 getResultIDs()
 
@@ -556,7 +501,7 @@ classLength = len(classNames)
 
 loginBorder = Label(width = 52, height = 6, relief = SUNKEN)
 titleLabel = Label(text='Welcome to the Speeling Bee', relief = RAISED)
-buttonLogin = Button(height = 3, width = 7,text='Login', fg = 'blue', command = lambda: Login(userIDClass))
+buttonLogin = Button(height = 3, width = 7,text='Login', fg = 'blue', command = lambda: userLogin(userIDClass))
 buttonSignUp = Button(width = 7, text='Sign up', command = lambda: signUp(names, classNames))
 usernameLabel = Label(text = 'Username:')
 passwordLabel = Label(text = 'Password:')
