@@ -405,7 +405,7 @@ def historyToTeacher():
         scores.append(score)
     length = len(scores)
     for k in range(0, length):
-        string = ('Attempt '+str(k)+'; Score'+str(scores[k]))
+        string = ('Attempt '+str(k)+'; Score '+str(scores[k]))
         outputList.append(string)
         
     historyList.delete(0, END)
